@@ -1,4 +1,4 @@
-package log
+package logger
 
 import (
 	"bytes"
@@ -6,19 +6,17 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
 type writeBuffer struct {
-	mu      sync.RWMutex
-	buf     *bytes.Buffer
-	closeCh chan bool
+	mu  sync.RWMutex
+	buf *bytes.Buffer
 }
 
 func newWriterBuffer() *writeBuffer {
-	return &writeBuffer{buf: bytes.NewBuffer(nil), closeCh: make(chan bool)}
+	return &writeBuffer{buf: bytes.NewBuffer(nil)}
 }
 
 func (wb *writeBuffer) Write(p []byte) (int, error) {
@@ -40,12 +38,7 @@ func (wb *writeBuffer) Reset() {
 }
 
 func (wb *writeBuffer) Close() error {
-	wb.closeCh <- true
 	return nil
-}
-
-func (wb *writeBuffer) Done() <-chan bool {
-	return wb.closeCh
 }
 
 func TestDebugLog(t *testing.T) {
@@ -53,7 +46,6 @@ func TestDebugLog(t *testing.T) {
 	defer tearDown()
 
 	Debugf("test debug log!")
-	time.Sleep(time.Millisecond * 250)
 
 	l := bw.String()
 
@@ -66,7 +58,6 @@ func TestInfoLog(t *testing.T) {
 	defer tearDown()
 
 	Infof("test info log!")
-	time.Sleep(time.Millisecond * 250)
 
 	l := bw.String()
 
@@ -79,7 +70,6 @@ func TestWarningLog(t *testing.T) {
 	defer tearDown()
 
 	Warnf("test warning log!")
-	time.Sleep(time.Millisecond * 250)
 
 	l := bw.String()
 
@@ -92,7 +82,6 @@ func TestErrorLog(t *testing.T) {
 	defer tearDown()
 
 	Errorf("test error log!")
-	time.Sleep(time.Millisecond * 250)
 
 	l := bw.String()
 
@@ -102,7 +91,6 @@ func TestErrorLog(t *testing.T) {
 	bw.Reset()
 
 	Error(errors.New("some error string"))
-	time.Sleep(time.Millisecond * 250)
 
 	l = bw.String()
 	require.True(t, strings.Contains(l, "some error string"))
@@ -118,7 +106,6 @@ func TestFatalLog(t *testing.T) {
 	defer tearDown()
 
 	Fatalf("test fatal log!")
-	time.Sleep(time.Millisecond * 250)
 
 	require.True(t, exited)
 
@@ -130,7 +117,6 @@ func TestFatalLog(t *testing.T) {
 	exited = false
 
 	Fatal(errors.New("some error string"))
-	time.Sleep(time.Millisecond * 250)
 
 	l = bw.String()
 	require.True(t, strings.Contains(l, "some error string"))
@@ -140,19 +126,11 @@ func TestLogFile(t *testing.T) {
 	bw, lf, tearDown := setupTest("debug")
 
 	Debugf("test debug log!")
-	time.Sleep(time.Millisecond * 250)
 
 	require.Equal(t, bw.String(), lf.String())
 
 	// make sure file is closed
 	tearDown()
-
-	select {
-	case <-lf.Done():
-		require.True(t, true)
-	case <-time.After(time.Second):
-		require.FailNow(t, "log file has not been closed")
-	}
 }
 
 func setupTest(level string) (*writeBuffer, *writeBuffer, func()) {

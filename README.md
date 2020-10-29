@@ -1,7 +1,7 @@
-[![Build Status](https://travis-ci.com/dantin/log.svg?&branch=main)](https://travis-ci.com/dantin/log)
+[![Build Status](https://travis-ci.com/dantin/logger.svg?&branch=main)](https://travis-ci.com/dantin/logger)
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 
-# Log
+# Logger
 
 Yet another Golang implementation of log.
 
@@ -22,7 +22,7 @@ Just for personal use.
 
 You can clone the repository wherever you want.
 
-    $ git clone https://github.com/dantin/log.git && cd log
+    $ git clone https://github.com/dantin/logger.git && cd logger
 
 ## Usage
 
@@ -40,7 +40,7 @@ N/A
 
 Suggestions and improvements welcome!
 
-Feel free to [Open an issue](https://github.com/dantin/log/issues/new) or submit PRs.
+Feel free to [Open an issue](https://github.com/dantin/logger/issues/new) or submit PRs.
 
 ## License
 
