@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-const logChanBufferSize = 2 * (1 << 10) // 2k bit
-
 var exitHandler = func() { os.Exit(-1) }
 
 // Level represents log level type.
@@ -144,12 +142,11 @@ type callerInfo struct {
 }
 
 type record struct {
-	level     Level
-	pkg       string
-	file      string
-	line      int
-	log       string
-	continuCh chan struct{}
+	level Level
+	pkg   string
+	file  string
+	line  int
+	log   string
 }
 
 type logger struct {
@@ -157,7 +154,6 @@ type logger struct {
 	output io.Writer
 	files  []io.WriteCloser
 	b      strings.Builder
-	recCh  chan record
 }
 
 // New returns a default logger instance.
@@ -170,9 +166,7 @@ func New(level string, output io.Writer, files ...io.WriteCloser) (Logger, error
 		level:  lvl,
 		output: output,
 		files:  files,
-		recCh:  make(chan record, logChanBufferSize),
 	}
-	go l.loop()
 
 	return l, nil
 }
@@ -183,68 +177,50 @@ func (l *logger) Level() Level {
 
 func (l *logger) Log(level Level, pkg string, file string, line int, format string, args ...interface{}) {
 	entry := record{
-		level:     level,
-		pkg:       pkg,
-		file:      file,
-		line:      line,
-		log:       fmt.Sprintf(format, args...),
-		continuCh: make(chan struct{}),
+		level: level,
+		pkg:   pkg,
+		file:  file,
+		line:  line,
+		log:   fmt.Sprintf(format, args...),
 	}
-	select {
-	case l.recCh <- entry:
-		if level == FatalLevel {
-			<-entry.continuCh // wait until done
-		}
-	default:
-		break // avoid blocking...
-	}
+	l.log(&entry)
 }
 
 func (l *logger) Close() error {
-	close(l.recCh)
+	// close log files
+	for _, w := range l.files {
+		_ = w.Close()
+	}
 	return nil
 }
 
-func (l *logger) loop() {
-	for {
-		select {
-		case rec, ok := <-l.recCh:
-			if !ok {
-				// close log files
-				for _, w := range l.files {
-					_ = w.Close()
-				}
-				return
-			}
-			l.b.Reset()
+func (l *logger) log(rec *record) {
+	l.b.Reset()
 
-			l.b.WriteString(time.Now().Format("2006-01-02 15:04:05"))
-			l.b.WriteString(" [")
-			l.b.WriteString(logLevelAbbreviation(rec.level))
-			l.b.WriteString("] ")
+	l.b.WriteString(time.Now().Format("2006-01-02 15:04:05"))
+	l.b.WriteString(" [")
+	l.b.WriteString(logLevelAbbreviation(rec.level))
+	l.b.WriteString("] ")
 
-			l.b.WriteString(rec.pkg)
-			if len(rec.pkg) > 0 {
-				l.b.WriteString("/")
-			}
-			l.b.WriteString(rec.file)
-			l.b.WriteString(":")
-			l.b.WriteString(strconv.Itoa(rec.line))
-			l.b.WriteString(" - ")
-			l.b.WriteString(rec.log)
-			l.b.WriteString("\n")
+	l.b.WriteString(rec.pkg)
+	if len(rec.pkg) > 0 {
+		l.b.WriteString("/")
+	}
+	l.b.WriteString(rec.file)
+	l.b.WriteString(":")
+	l.b.WriteString(strconv.Itoa(rec.line))
+	l.b.WriteString(" - ")
+	l.b.WriteString(rec.log)
+	l.b.WriteString("\n")
 
-			line := l.b.String()
+	line := l.b.String()
 
-			_, _ = fmt.Fprintf(l.output, line)
-			for _, w := range l.files {
-				_, _ = fmt.Fprintf(w, line)
-			}
-			if rec.level == FatalLevel {
-				exitHandler()
-			}
-			close(rec.continuCh)
-		}
+	_, _ = fmt.Fprintf(l.output, line)
+	for _, w := range l.files {
+		_, _ = fmt.Fprintf(w, line)
+	}
+	if rec.level == FatalLevel {
+		exitHandler()
 	}
 }
 
@@ -253,11 +229,6 @@ func getCallerInfo() callerInfo {
 	_, file, ln, ok := runtime.Caller(2)
 	if ok {
 		ci.pkg = filepath.Base(path.Dir(file))
-		/*
-			if ci.pkg == projectFolder {
-				ci.pkg = ""
-			}
-		*/
 		filename := filepath.Base(file)
 		ci.filename = strings.TrimSuffix(filename, filepath.Ext(filename))
 		ci.line = ln
@@ -291,7 +262,7 @@ func levelFromString(level string) (Level, error) {
 		return DebugLevel, nil
 	case "", "info":
 		return InfoLevel, nil
-	case "warning":
+	case "warning", "warn":
 		return WarningLevel, nil
 	case "error":
 		return ErrorLevel, nil
