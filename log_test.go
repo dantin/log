@@ -6,8 +6,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 type writeBuffer struct {
@@ -49,8 +47,12 @@ func TestDebugLog(t *testing.T) {
 
 	l := bw.String()
 
-	require.True(t, strings.Contains(l, "[DEBUG]"))
-	require.True(t, strings.Contains(l, "test debug log!"))
+	if !strings.Contains(l, "[DEBUG]") {
+		t.Fatalf("Debug flag not equal")
+	}
+	if !strings.Contains(l, "test debug log!") {
+		t.Fatalf("Debug message not equal")
+	}
 }
 
 func TestInfoLog(t *testing.T) {
@@ -61,8 +63,12 @@ func TestInfoLog(t *testing.T) {
 
 	l := bw.String()
 
-	require.True(t, strings.Contains(l, "[INFO]"))
-	require.True(t, strings.Contains(l, "test info log!"))
+	if !strings.Contains(l, "[INFO]") {
+		t.Fatalf("Info flag not equal")
+	}
+	if !strings.Contains(l, "test info log!") {
+		t.Fatalf("Info message not equal")
+	}
 }
 
 func TestWarningLog(t *testing.T) {
@@ -73,8 +79,12 @@ func TestWarningLog(t *testing.T) {
 
 	l := bw.String()
 
-	require.True(t, strings.Contains(l, "[WARN]"))
-	require.True(t, strings.Contains(l, "test warning log!"))
+	if !strings.Contains(l, "[WARN]") {
+		t.Fatalf("Warn flag not equal")
+	}
+	if !strings.Contains(l, "test warning log!") {
+		t.Fatalf("Warn message not equal")
+	}
 }
 
 func TestErrorLog(t *testing.T) {
@@ -85,15 +95,21 @@ func TestErrorLog(t *testing.T) {
 
 	l := bw.String()
 
-	require.True(t, strings.Contains(l, "[ERROR]"))
-	require.True(t, strings.Contains(l, "test error log!"))
+	if !strings.Contains(l, "[ERROR]") {
+		t.Fatalf("Error flag not equal")
+	}
+	if !strings.Contains(l, "test error log!") {
+		t.Fatalf("Error message not equal")
+	}
 
 	bw.Reset()
 
 	Error(errors.New("some error string"))
 
 	l = bw.String()
-	require.True(t, strings.Contains(l, "some error string"))
+	if !strings.Contains(l, "some error string") {
+		t.Fatalf("Error message not equal")
+	}
 }
 
 func TestFatalLog(t *testing.T) {
@@ -107,11 +123,17 @@ func TestFatalLog(t *testing.T) {
 
 	Fatalf("test fatal log!")
 
-	require.True(t, exited)
+	if !exited {
+		t.Fatalf("Fatal should exit")
+	}
 
 	l := bw.String()
-	require.True(t, strings.Contains(l, "[FATAL]"))
-	require.True(t, strings.Contains(l, "test fatal log!"))
+	if !strings.Contains(l, "[FATAL]") {
+		t.Fatalf("Fatal flag not equal")
+	}
+	if !strings.Contains(l, "test fatal log!") {
+		t.Fatalf("Fatal message not equal")
+	}
 
 	bw.Reset()
 	exited = false
@@ -119,7 +141,9 @@ func TestFatalLog(t *testing.T) {
 	Fatal(errors.New("some error string"))
 
 	l = bw.String()
-	require.True(t, strings.Contains(l, "some error string"))
+	if !strings.Contains(l, "some error string") {
+		t.Fatalf("Fatal message not equal")
+	}
 }
 
 func TestLogFile(t *testing.T) {
@@ -127,7 +151,9 @@ func TestLogFile(t *testing.T) {
 
 	Debugf("test debug log!")
 
-	require.Equal(t, bw.String(), lf.String())
+	if bw.String() != lf.String() {
+		t.Fatalf("not equal")
+	}
 
 	// make sure file is closed
 	tearDown()
